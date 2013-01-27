@@ -1,0 +1,130 @@
+<html>
+
+
+<head>
+
+	<script type='text/javascript' src='graph.js'></script>
+	<script type='text/javascript' src='astar.js'></script>
+
+	<script type='text/javascript' src='underscore.js'></script>
+	<script type="text/javascript" src="http://code.jquery.com/jquery.min.js"></script>
+
+	<script type="text/javascript">
+
+		$(document).ready(function() {
+			// node, xpos, ypos
+			var nodes = [
+				['GG', 20],
+				['S1NordS', 40],
+				['S1NordN', 50],
+				['U7N'],
+				['U7S'],
+				['U7N2'], 
+				['S25']
+			];
+
+			// from, to, weight
+			// FUTURE type, symmetric
+			var connections = [
+				['GG', 'S1NordS', 100],
+				['S1NordS', 'S1NordN', 0],
+				['S1NordS', 'U7S', 20],
+				['S1NordN', 'U7N', 20],
+				['S1NordN', 'S1NordS', 20],
+				['U7N', 'U7N2', 40],
+				['U7S', 'S25', 50],
+				['U7N2', 'S25', 20],
+				['U7N2', 'S25', 20]
+			];
+
+			function heuristic_cost_estimate(start, goal) {
+				return 0;
+			}
+
+			function find_neighbors(node, graph) {
+				var filtered = _.filter(graph, function(el) { 
+					return el[0] === node || el[1] === node; 
+				});
+
+				var nodes = _.flatten(_.map(filtered, function(el) { return _.take(el, 2); }));
+				return _.unique(_.filter(nodes, function(el) { return el !== node; }));
+			}
+
+			function dist_between(n1, n2) {
+				return _.filter(connections, function(el) { 
+					return el[0] === n1 && el[1] === n2
+							||
+						   el[1] === n1 && el[0] === n2;
+				})[0][2];
+			}
+
+
+
+			function Astar(start, goal) {
+				// Implementation from: http://en.wikipedia.org/wiki/A*_search_algorithm#Pseudocode
+				var closedset = [];
+				var openset = [start];
+				var came_from = {};
+
+				function reconstruct_path(came_from, current_node) {
+					if (current_node in came_from) {
+						var p = reconstruct_path(came_from, came_from[current_node]);
+
+						return [p].concat(current_node);
+					} else {
+						return current_node;
+					}
+				}
+
+				var g_score = {};
+				g_score[start] = 0;
+
+				var f_score = {};
+				f_score[start] = g_score[start] + heuristic_cost_estimate(start, goal);
+
+				while (!_.isEmpty(openset)) {
+					var current = _.min(_.zip(openset, _.map(openset, function(node) { return f_score[node]; })), function(el) { return el[1]; })[0];
+					// console.log('current ' + current);
+
+					if (current === goal) {
+						return reconstruct_path(came_from, goal);
+					}
+
+					openset = _.filter(openset, function(el) { return el !== current; });
+					closedset.push(current);
+
+					var neighbors = find_neighbors(current, connections);
+					for (var i = 0; i < neighbors.length; i++) {
+						var neighbor = neighbors[i];
+						if (_.contains(closedset, neighbor)) continue;
+
+						var tentative_g_score = g_score[current] + dist_between(current, neighbor);
+						// console.log('gscore ' + tentative_g_score);
+
+						if (!_.contains(openset, neighbor)
+							|| (neighbor in g_score && tentative_g_score <= g_score[neighbor])) {
+							came_from[neighbor] = current;
+							g_score[neighbor] = tentative_g_score;
+							f_score[neighbor] = g_score[neighbor] + heuristic_cost_estimate(neighbor, goal);
+
+							if (!_.contains(openset, neighbor)) {
+								openset.push(neighbor);
+								// console.log('openset ' + openset);
+							}
+						}
+					}
+				}
+				return 'failed to find a path';
+			}
+
+			console.log(_.flatten(Astar("GG", "S25")));
+		});
+
+	</script>
+</head>
+
+<body>
+
+</body>
+
+</html>
